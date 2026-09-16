@@ -568,7 +568,8 @@ FORMATO:
                 {"role": "user", "content": prompt},
             ],
             temperature=0.2,
-            max_tokens=500,
+            max_tokens=1200,
+            reasoning_effort="low"
         )
         content = response.choices[0].message.content or ""
         content = re.sub(r"\n{2,}", "\n", content)
@@ -1488,13 +1489,3 @@ header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-import os
-import requests
-
-api_key = os.getenv("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY", "")
-r = requests.get(
-    "https://api.groq.com/openai/v1/models",
-    headers={"Authorization": f"Bearer {api_key}"}
-)
-print("STATUS:", r.status_code)
-print("MODELOS DISPONIBLES:", [m["id"] for m in r.json().get("data", [])])
