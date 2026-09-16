@@ -1487,3 +1487,14 @@ header {visibility: hidden;}
 .viewerBadge_container__1QSob {display: none !important;}
 </style>
 """, unsafe_allow_html=True)
+
+import os
+import requests
+
+api_key = os.getenv("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY", "")
+r = requests.get(
+    "https://api.groq.com/openai/v1/models",
+    headers={"Authorization": f"Bearer {api_key}"}
+)
+print("STATUS:", r.status_code)
+print("MODELOS DISPONIBLES:", [m["id"] for m in r.json().get("data", [])])
