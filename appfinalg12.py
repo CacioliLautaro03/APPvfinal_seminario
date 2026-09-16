@@ -483,15 +483,19 @@ def analisis_ia(ticker: str, nombre: str, sector: str, precio: float | None,
                 per, beta, market_cap_str: str, margen: float | None,
                 max52: float | None, min52: float | None,
                 contexto_tecnico: dict | None = None) -> str:
-    """Genera un análisis educativo con Groq usando solo datos provistos por la app."""
+    """Genera un análisis educativo usando la librería oficial de Groq."""
     if not GROQ_API_KEY:
         return "⚠️ Análisis IA no disponible: configurá GROQ_API_KEY en los secrets de Streamlit."
+
+    from groq import Groq
+    import re
 
     contexto_tecnico = contexto_tecnico or {}
     rendimiento_periodo = contexto_tecnico.get("rendimiento_periodo")
     volatilidad_anual = contexto_tecnico.get("volatilidad_anual")
     media_50 = contexto_tecnico.get("media_50")
     media_200 = contexto_tecnico.get("media_200")
+    
     indicadores = f"""
 - Empresa: {nombre} ({ticker})
 - Sector: {sector}
@@ -555,36 +559,23 @@ FORMATO:
 {indicadores}
 """
 
-    import re
     try:
-        r = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {GROQ_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": GROQ_MODEL,
-                "messages": [
-                    {"role": "system", "content": "Sos un analista financiero junior educativo. No inventás información."},
-                    {"role": "user", "content": prompt},
-                ],
-                "temperature": 0.2,
-                "max_tokens": 500,
-            },
-            timeout=35
+        client = Groq(api_key=GROQ_API_KEY)
+        response = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[
+                {"role": "system", "content": "Sos un analista financiero junior educativo. No inventás información."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.2,
+            max_tokens=500,
         )
-        if r.status_code == 200:
-            content = r.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-            content = re.sub(r"\n{2,}", "\n", content)
-            content = "\n".join([line for line in content.split("\n") if line.strip()])
-            return content.strip()
-        if r.status_code == 429:
-            return "⏳ El servicio de IA está ocupado en este momento. Esperá unos segundos y volvé a intentarlo."
-        return f"⚠️ Error al contactar Groq (código {r.status_code})."
-    except requests.RequestException as e:
+        content = response.choices[0].message.content or ""
+        content = re.sub(r"\n{2,}", "\n", content)
+        content = "\n".join([line for line in content.split("\n") if line.strip()])
+        return content.strip()
+    except Exception as e:
         return f"⚠️ Error al contactar Groq: {e}"
-
 
 @st.cache_data(ttl=1800, show_spinner=False)          # 30 min — mismo ticker no re-llama a Groq
 def analisis_ia_cached(
